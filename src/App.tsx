@@ -3,10 +3,8 @@ import type { FormEvent } from 'react'
 import { AuthenticatedApp } from './AuthenticatedApp'
 import './App.css'
 
-const DEFAULT_API_BASE_URL = 'http://localhost:6060'
-const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL).replace(/\/+$/, '')
-const LOGIN_ENDPOINT = `${API_BASE_URL}/api/v1/auth/login`
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '')
+const LOGIN_ENDPOINT = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/login` : '/api/v1/auth/login'
 const TOKEN_STORAGE_KEY = 'authToken'
 const EMAIL_STORAGE_KEY = 'authUserEmail'
 const DEMO_TOKEN = 'demo-auth-token'
