@@ -1,13 +1,44 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { AuthenticatedApp } from './AuthenticatedApp'
 import './App.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 const LOGIN_ENDPOINT = `${API_BASE_URL}/api/v1/auth/login`
+const TOKEN_STORAGE_KEY = 'authToken'
+const EMAIL_STORAGE_KEY = 'authUserEmail'
+const DEMO_TOKEN = 'demo-auth-token'
+const DEMO_MODE_ENABLED =
+  (import.meta.env.VITE_ENABLE_DEMO_LOGIN ?? '').toLowerCase() === 'true' || !API_BASE_URL
 
 type LoginStatus = {
   type: 'success' | 'error'
   message: string
+}
+
+type Session = {
+  email: string
+  token: string
+}
+
+function getInitialSession(): Session | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const token = window.localStorage.getItem(TOKEN_STORAGE_KEY)
+  const email = window.localStorage.getItem(EMAIL_STORAGE_KEY)
+
+  if (!token || !email) {
+    return null
+  }
+
+  return { token, email }
+}
+
+function clearSessionStorage() {
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+  window.localStorage.removeItem(EMAIL_STORAGE_KEY)
 }
 
 function findToken(payload: unknown): string | null {
@@ -156,23 +187,9 @@ function EyeIcon({ visible }: { visible: boolean }) {
   )
 }
 
-function ShieldIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M12 3.5c2.8 2 5.8 2.4 7.5 2.4v5.4c0 4.2-2.8 8-7.5 9.2-4.7-1.2-7.5-5-7.5-9.2V5.9c1.7 0 4.7-.4 7.5-2.4Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  )
-}
-
 function App() {
-  const [email, setEmail] = useState('')
+  const [session, setSession] = useState<Session | null>(getInitialSession)
+  const [email, setEmail] = useState(session?.email ?? '')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -182,6 +199,19 @@ function App() {
     event.preventDefault()
     setIsSubmitting(true)
     setLoginStatus(null)
+
+    if (DEMO_MODE_ENABLED) {
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, DEMO_TOKEN)
+      window.localStorage.setItem(EMAIL_STORAGE_KEY, email)
+      setPassword('')
+      setSession({ token: DEMO_TOKEN, email })
+      setLoginStatus({
+        type: 'success',
+        message: 'Sesion iniciada en modo demo.',
+      })
+      setIsSubmitting(false)
+      return
+    }
 
     try {
       const response = await fetch(LOGIN_ENDPOINT, {
@@ -208,13 +238,17 @@ function App() {
         throw new Error('La API respondio correctamente, pero no envio un token.')
       }
 
-      localStorage.setItem('authToken', token)
-      localStorage.setItem('authUserEmail', email)
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, token)
+      window.localStorage.setItem(EMAIL_STORAGE_KEY, email)
+      setPassword('')
+      setSession({ token, email })
       setLoginStatus({
         type: 'success',
         message: 'Sesion iniciada correctamente.',
       })
     } catch (error) {
+      clearSessionStorage()
+      setSession(null)
       setLoginStatus({
         type: 'error',
         message:
@@ -227,21 +261,24 @@ function App() {
     }
   }
 
+  const handleLogout = () => {
+    clearSessionStorage()
+    window.localStorage.removeItem('cyclix-admin-section')
+    setSession(null)
+    setPassword('')
+    setLoginStatus(null)
+  }
+
+  if (session) {
+    return <AuthenticatedApp userEmail={session.email} onLogout={handleLogout} />
+  }
+
   return (
     <main className="login-shell">
       <section className="login-card" aria-labelledby="login-title">
-        <header className="brand-panel">
-          <div className="brand-mark" aria-hidden="true">
-            <ShieldIcon />
-          </div>
-          <div className="brand-copy">
-            <p className="brand-title">ControlZero</p>
-            <p className="brand-subtitle">Sistema de Control de Alcoholemia Laboral</p>
-          </div>
-        </header>
-
         <form className="form-panel" onSubmit={handleSubmit}>
           <div className="heading">
+            <img className="heading-logo" src="/cyclix-logo-transparent.png" alt="Cyclix" />
             <h1 id="login-title">Iniciar Sesi&oacute;n</h1>
             <p>Ingresa tus credenciales para continuar</p>
           </div>
@@ -271,7 +308,7 @@ function App() {
               </span>
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="********"
                 value={password}
                 autoComplete="current-password"
                 required
@@ -300,7 +337,7 @@ function App() {
         </form>
       </section>
 
-      <p className="footer-note">© 2026 ControlZero. Todos los derechos reservados.</p>
+      <p className="footer-note">&copy; 2026 Cyclix. Todos los derechos reservados - 1190 032.</p>
     </main>
   )
 }
