@@ -3,13 +3,12 @@ import type { FormEvent } from 'react'
 import { AuthenticatedApp } from './AuthenticatedApp'
 import './App.css'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
-const LOGIN_ENDPOINT = `${API_BASE_URL}/api/v1/auth/login`
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '')
+const LOGIN_ENDPOINT = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/login` : '/api/v1/auth/login'
 const TOKEN_STORAGE_KEY = 'authToken'
 const EMAIL_STORAGE_KEY = 'authUserEmail'
 const DEMO_TOKEN = 'demo-auth-token'
-const DEMO_MODE_ENABLED =
-  (import.meta.env.VITE_ENABLE_DEMO_LOGIN ?? '').toLowerCase() === 'true' || !API_BASE_URL
+const DEMO_MODE_ENABLED = (import.meta.env.VITE_ENABLE_DEMO_LOGIN ?? '').toLowerCase() === 'true'
 
 type LoginStatus = {
   type: 'success' | 'error'
